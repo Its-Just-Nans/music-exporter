@@ -1,5 +1,7 @@
+use std::env::args;
+
 use dotenv::dotenv;
-use music_exporter::write_to_file;
+use music_exporter::utils::{read_from_file, write_to_file};
 use music_exporter::Platform;
 use music_exporter::SpotifyPlatform;
 use music_exporter::YoutubePlatform;
@@ -14,7 +16,12 @@ async fn main() {
     println!("music-exporter");
     dotenv().ok();
     let mut items = vec![];
-    write_to_file("data.json", items.clone()); // check write to file
+    let filename = if args().len() > 1 {
+        args().nth(1).unwrap()
+    } else {
+        "data.json".to_string()
+    };
+    read_from_file(&filename, &mut items);
     let mut ytb = YoutubePlatform::new();
     ytb.init().await;
     items.extend(ytb.get_list().await);
@@ -23,5 +30,9 @@ async fn main() {
     spt.init().await;
     items.extend(spt.get_list().await);
     // write to file
-    write_to_file("data.json", items);
+    log::info!("Total items: {}", items.len());
+    items = music_exporter::music::unique_music(items);
+    log::info!("Unique items: {}", items.len());
+    items.sort();
+    write_to_file(&filename, items);
 }

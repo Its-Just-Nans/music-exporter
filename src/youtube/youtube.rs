@@ -116,22 +116,26 @@ impl YoutubePlatform {
         let items = json_response
             .items
             .iter()
-            .map(|item| crate::Music {
-                title: item.snippet.title.clone(),
-                author: item
+            .map(|item| {
+                let author = item
                     .snippet
                     .video_owner_channel_title
                     .clone()
-                    .unwrap_or_else(|| "Unknown".to_string()),
-                thumbnail: Some(format!(
-                    "https://img.youtube.com/vi/{}/default.jpg",
-                    item.snippet.resource_id.video_id
-                )),
-                url: Some(format!(
-                    "https://www.youtube.com/watch?v={}",
-                    item.snippet.resource_id.video_id
-                )),
-                date: Some(item.snippet.published_at.clone()),
+                    .unwrap_or_else(|| "Unknown".to_string())
+                    .replace(" - Topic", "");
+                return crate::Music {
+                    title: item.snippet.title.clone(),
+                    author,
+                    thumbnail: Some(format!(
+                        "https://img.youtube.com/vi/{}/default.jpg",
+                        item.snippet.resource_id.video_id
+                    )),
+                    url: Some(format!(
+                        "https://www.youtube.com/watch?v={}",
+                        item.snippet.resource_id.video_id
+                    )),
+                    date: Some(item.snippet.published_at.clone()),
+                };
             })
             .collect();
         log::info!("Next page token: {:?}", json_response.next_page_token);
