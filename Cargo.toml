@@ -1,0 +1,26 @@
+[package]
+name = "music-exporter"
+version = "1.0.0"
+authors = ["n4n5 <its.just.n4n5@gmail.com>"]
+description = "export music from different sources"
+edition = "2021"
+license = "MIT"
+homepage = "https://github.com/Its-Just-Nans/music-exporter"
+repository = "https://github.com/Its-Just-Nans/music-exporter"
+keywords = ["music"]
+
+
+[dependencies]
+anyhow = "1.0.91"
+base64 = "0.22.1"
+dotenv = "0.15.0"
+env_logger = "0.11.5"
+hyper = { version = "1.5.0", features = ["server", "http1"] }
+hyper-util = "0.1.9"
+log = "0.4.22"
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1.0.213", features = ["derive"] }
+serde_json = "1.0.132"
+tokio = { version = "1", features = ["full"] }
+tower = "0.5.1"
+url = "2.5.2"
