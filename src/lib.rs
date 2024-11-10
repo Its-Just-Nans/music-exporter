@@ -7,7 +7,9 @@ pub mod utils;
 mod youtube;
 
 pub trait Platform {
-    fn init(&mut self) -> impl std::future::Future<Output = ()> + Send;
+    fn init(self) -> impl std::future::Future<Output = Self> + Send
+    where
+        Self: Sized;
     fn get_list(&self) -> impl std::future::Future<Output = Vec<Music>> + Send;
 }
 

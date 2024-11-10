@@ -110,7 +110,7 @@ impl SpotifyPlatform {
 }
 
 impl crate::Platform for SpotifyPlatform {
-    async fn init(&mut self) {
+    async fn init(mut self) -> Self {
         self.id_client = input("Please enter id_client", "MUSIC_EXPLORER_SPOTIFY_ID_CLIENT");
         self.id_client_secret = input(
             "Please enter id_client_secret",
@@ -137,7 +137,9 @@ impl crate::Platform for SpotifyPlatform {
         );
         let resp = srv.await.unwrap();
         self.authorization = Some(self.code_to_token(&resp.code).await);
+        self
     }
+
     async fn get_list(&self) -> Vec<crate::Music> {
         let mut items = Vec::new();
         let mut page_next = None;

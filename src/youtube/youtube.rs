@@ -144,7 +144,7 @@ impl YoutubePlatform {
 }
 
 impl crate::Platform for YoutubePlatform {
-    async fn init(&mut self) {
+    async fn init(mut self) -> Self {
         self.api_key = input("Please enter API KEY", "MUSIC_EXPLORER_YOUTUBE_API_KEY");
         self.id_client = input("Please enter id_client", "MUSIC_EXPLORER_YOUTUBE_ID_CLIENT");
         self.id_client_secret = input(
@@ -160,6 +160,7 @@ impl crate::Platform for YoutubePlatform {
         );
         let resp = srv.await.unwrap();
         self.authorization = Some(self.code_to_token(&resp.code).await);
+        self
     }
 
     async fn get_list(&self) -> Vec<crate::Music> {

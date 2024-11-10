@@ -22,12 +22,10 @@ async fn main() {
         "data.json".to_string()
     };
     read_from_file(&filename, &mut items);
-    let mut ytb = YoutubePlatform::new();
-    ytb.init().await;
+    let ytb = YoutubePlatform::new().init().await;
     items.extend(ytb.get_list().await);
 
-    let mut spt = SpotifyPlatform::new();
-    spt.init().await;
+    let spt = SpotifyPlatform::new().init().await;
     items.extend(spt.get_list().await);
     // write to file
     log::info!("Total items: {}", items.len());
