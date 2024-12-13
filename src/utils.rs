@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 pub fn input(txt: &str, env_name: &str) -> Option<String> {
     use std::io::{stdin, stdout, Write};
     if let Ok(val) = std::env::var(env_name) {
@@ -19,7 +21,7 @@ pub fn input(txt: &str, env_name: &str) -> Option<String> {
     Some(s)
 }
 
-pub fn write_to_file(filename: &str, data: Vec<crate::Music>) {
+pub fn write_to_file(filename: &PathBuf, data: Vec<crate::Music>) {
     use serde::Serialize;
     use std::fs::File;
     use std::io::{BufWriter, Write};
@@ -31,7 +33,7 @@ pub fn write_to_file(filename: &str, data: Vec<crate::Music>) {
     writer.flush().unwrap();
 }
 
-pub fn read_from_file(filename: &str, items: &mut Vec<crate::Music>) {
+pub fn read_from_file(filename: &PathBuf, items: &mut Vec<crate::Music>) {
     use std::fs::File;
     use std::io::BufReader;
     let file = File::create(filename).expect("Could not create file");
