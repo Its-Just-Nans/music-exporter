@@ -88,7 +88,7 @@ pub fn write_to_file(filename: &PathBuf, data: Vec<crate::Music>) {
     use serde::Serialize;
     use std::fs::File;
     use std::io::{BufWriter, Write};
-    let file = File::open(filename).expect("Could not create file");
+    let file = File::create(filename).expect("Could not create file");
     let mut writer = BufWriter::new(file);
     let formatter = serde_json::ser::PrettyFormatter::with_indent(b"    ");
     let mut ser = serde_json::Serializer::with_formatter(&mut writer, formatter);
