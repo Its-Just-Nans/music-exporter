@@ -14,6 +14,7 @@ pub struct SpotifyImage {
 pub struct SpotifyAlbum {
     pub release_date: String,
     pub images: Vec<SpotifyImage>,
+    pub name: String,
 }
 
 #[derive(Debug, serde::Deserialize)]

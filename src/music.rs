@@ -5,6 +5,7 @@ pub struct Music {
     pub url: Option<String>,
     pub thumbnail: Option<String>,
     pub date: Option<String>,
+    pub album: Option<String>,
 }
 
 impl Music {

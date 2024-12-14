@@ -1,41 +1,24 @@
 //!
 //! Useful link https://developer.spotify.com/documentation/web-api
 
-use base64::Engine;
 use reqwest::Client;
 
 use super::types::{PlaylistItems, SpotifyAccessToken};
-use crate::{input, oauth::listen_for_code};
+use crate::{
+    oauth::listen_for_code,
+    utils::{input, to_base_64},
+};
 
+#[derive(Default)]
 pub struct SpotifyPlatform {
-    authorization: Option<String>,
-    id_client: Option<String>,
-    id_client_secret: Option<String>,
-}
-
-fn to_base_64(input: &str) -> String {
-    let mut output = String::new();
-    base64::prelude::BASE64_STANDARD.encode_string(input, &mut output);
-    output
+    authorization: String,
 }
 
 impl SpotifyPlatform {
-    pub fn new() -> Self {
-        Self {
-            authorization: None,
-            id_client: None,
-            id_client_secret: None,
-        }
-    }
-
-    async fn code_to_token(&self, code: &str) -> String {
+    async fn code_to_token(id_client: &str, id_client_secret: &str, code: &str) -> String {
         let authorization_header = format!(
             "Basic {}",
-            to_base_64(&format!(
-                "{}:{}",
-                self.id_client.clone().unwrap(),
-                self.id_client_secret.clone().unwrap()
-            ))
+            to_base_64(&format!("{}:{}", id_client, id_client_secret))
         );
         let resp = Client::new()
             .post("https://accounts.spotify.com/api/token")
@@ -51,7 +34,7 @@ impl SpotifyPlatform {
             .await
             .unwrap();
         let json_response = resp.json::<SpotifyAccessToken>().await.unwrap();
-        return json_response.access_token;
+        json_response.access_token
     }
 
     async fn get_playlist_items(&self, offset: Option<u64>) -> (Vec<crate::Music>, Option<u64>) {
@@ -65,10 +48,7 @@ impl SpotifyPlatform {
         .unwrap();
         let resp = Client::new()
             .get(url)
-            .header(
-                "Authorization",
-                format!("Bearer {}", self.authorization.as_ref().unwrap()),
-            )
+            .header("Authorization", format!("Bearer {}", &self.authorization))
             .header("Accept", "application/json")
             .send()
             .await
@@ -96,6 +76,7 @@ impl SpotifyPlatform {
                 thumbnail: Some(item.track.album.images[0].url.clone()),
                 url: Some(item.track.external_urls.spotify.clone()),
                 date: Some(item.track.album.release_date.clone()),
+                album: Some(item.track.album.name.clone()),
             })
             .collect();
         let current_offset = json_response.offset;
@@ -110,21 +91,23 @@ impl SpotifyPlatform {
 }
 
 impl crate::Platform for SpotifyPlatform {
-    async fn init(mut self) -> Self {
-        self.id_client = input("Please enter id_client", "MUSIC_EXPLORER_SPOTIFY_ID_CLIENT");
-        self.id_client_secret = input(
+    async fn init() -> Self {
+        let id_client = input("Please enter id_client", "MUSIC_EXPLORER_SPOTIFY_ID_CLIENT")
+            .expect("ID_CLIENT is required");
+        let id_client_secret = input(
             "Please enter id_client_secret",
             "MUSIC_EXPLORER_SPOTIFY_ID_CLIENT_SECRET",
-        );
+        )
+        .expect("ID_CLIENT_SECRET is required");
         let url_oauth = url::Url::parse_with_params(
             "https://accounts.spotify.com/authorize",
             &[
-                ("client_id", self.id_client.clone().unwrap()),
-                ("response_type", "code".to_string()),
-                ("redirect_uri", "http://localhost:8000".to_string()),
+                ("client_id", &id_client),
+                ("response_type", &"code".to_string()),
+                ("redirect_uri", &"http://localhost:8000".to_string()),
                 (
                     "scope",
-                    "playlist-read-private,user-library-read".to_string(),
+                    &"playlist-read-private,user-library-read".to_string(),
                 ),
             ],
         )
@@ -136,8 +119,9 @@ impl crate::Platform for SpotifyPlatform {
             url_oauth
         );
         let resp = srv.await.unwrap();
-        self.authorization = Some(self.code_to_token(&resp.code).await);
-        self
+        let authorization =
+            SpotifyPlatform::code_to_token(&id_client, &id_client_secret, &resp.code).await;
+        Self { authorization }
     }
 
     async fn get_list(&self) -> Vec<crate::Music> {

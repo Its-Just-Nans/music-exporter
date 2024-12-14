@@ -1,5 +1,65 @@
 use std::path::PathBuf;
 
+use crate::{music, DeezerPlatform, Music, SpotifyPlatform, YoutubePlatform};
+
+pub trait Platform {
+    fn init() -> impl std::future::Future<Output = Self> + Send
+    where
+        Self: Sized;
+    fn get_list(&self) -> impl std::future::Future<Output = Vec<Music>> + Send;
+}
+
+pub enum PlatformType {
+    Deezer,
+    Spotify,
+    Youtube,
+}
+
+pub async fn get_list(platforms: &[PlatformType]) -> Vec<Music> {
+    let mut items = vec![];
+    for platform in platforms {
+        match platform {
+            PlatformType::Deezer => {
+                let deezer = DeezerPlatform::init().await;
+                items.extend(deezer.get_list().await);
+            }
+            PlatformType::Spotify => {
+                let spt = SpotifyPlatform::init().await;
+                items.extend(spt.get_list().await);
+            }
+            PlatformType::Youtube => {
+                let ytb = YoutubePlatform::init().await;
+                items.extend(ytb.get_list().await);
+            }
+        }
+    }
+    items
+}
+
+pub async fn cli_main(music_file: PathBuf, env_path: Option<PathBuf>, platforms: &[PlatformType]) {
+    match env_path {
+        Some(path) => {
+            dotenv::from_path(path).ok();
+        }
+        None => {
+            dotenv::dotenv().ok();
+        }
+    }
+    let mut items = vec![];
+    read_from_file(&music_file, &mut items);
+
+    if platforms.is_empty() {
+        log::info!("No platform selected, using all platforms");
+    }
+    items.extend(get_list(platforms).await);
+    // write to file
+    log::info!("Total items: {}", items.len());
+    let mut items = music::unique_music(items);
+    items.sort();
+    log::info!("Unique items: {}", items.len());
+    write_to_file(&music_file, items);
+}
+
 pub fn input(txt: &str, env_name: &str) -> Option<String> {
     use std::io::{stdin, stdout, Write};
     if let Ok(val) = std::env::var(env_name) {
@@ -7,7 +67,7 @@ pub fn input(txt: &str, env_name: &str) -> Option<String> {
     }
     let mut s = String::new();
     print!("{}", txt);
-    println!("({} not found in the env)", env_name);
+    println!(" ({} not found in the env)", env_name);
     let _ = stdout().flush();
     stdin()
         .read_line(&mut s)
@@ -41,4 +101,11 @@ pub fn read_from_file(filename: &PathBuf, items: &mut Vec<crate::Music>) {
     let mut de = serde_json::Deserializer::from_reader(reader);
     items.clear();
     items.extend(serde::de::Deserialize::deserialize(&mut de).unwrap_or(vec![]));
+}
+
+pub fn to_base_64(input: &str) -> String {
+    use base64::Engine;
+    let mut output = String::new();
+    base64::prelude::BASE64_STANDARD.encode_string(input, &mut output);
+    output
 }

@@ -1,6 +1,6 @@
 [package]
 name = "music-exporter"
-version = "1.0.1"
+version = "1.0.2"
 authors = ["n4n5 <its.just.n4n5@gmail.com>"]
 description = "export music from different sources"
 edition = "2021"
