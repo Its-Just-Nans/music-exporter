@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::{music, DeezerPlatform, Music, SpotifyPlatform, YoutubePlatform};
 
 pub trait Platform {
-    fn init() -> impl std::future::Future<Output = Self> + Send
+    fn init() -> impl std::future::Future<Output = Result<Self, ()>> + Send
     where
         Self: Sized;
     fn get_list(&self) -> impl std::future::Future<Output = Vec<Music>> + Send;
@@ -20,16 +20,19 @@ pub async fn get_list(platforms: &[PlatformType]) -> Vec<Music> {
     for platform in platforms {
         match platform {
             PlatformType::Deezer => {
-                let deezer = DeezerPlatform::init().await;
-                items.extend(deezer.get_list().await);
+                if let Ok(deezer) = DeezerPlatform::init().await {
+                    items.extend(deezer.get_list().await);
+                }
             }
             PlatformType::Spotify => {
-                let spt = SpotifyPlatform::init().await;
-                items.extend(spt.get_list().await);
+                if let Ok(spt) = SpotifyPlatform::init().await {
+                    items.extend(spt.get_list().await);
+                }
             }
             PlatformType::Youtube => {
-                let ytb = YoutubePlatform::init().await;
-                items.extend(ytb.get_list().await);
+                if let Ok(ytb) = YoutubePlatform::init().await {
+                    items.extend(ytb.get_list().await);
+                }
             }
         }
     }

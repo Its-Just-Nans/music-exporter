@@ -65,7 +65,7 @@ impl DeezerPlatform {
 }
 
 impl crate::Platform for DeezerPlatform {
-    async fn init() -> Self {
+    async fn init() -> Result<Self, ()> {
         let cookie = input(
             "Please enter your deezer cookie",
             "MUSIC_EXPORTER_DEEZER_COOKIE",
@@ -76,7 +76,8 @@ impl crate::Platform for DeezerPlatform {
             "MUSIC_EXPORTER_DEEZER_USER_ID",
         )
         .expect("USER_ID is required");
-        Self { cookie, user_id }
+
+        Ok(Self { cookie, user_id })
     }
 
     async fn get_list(&self) -> Vec<crate::Music> {

@@ -91,7 +91,7 @@ impl SpotifyPlatform {
 }
 
 impl crate::Platform for SpotifyPlatform {
-    async fn init() -> Self {
+    async fn init() -> Result<Self, ()> {
         let id_client = input("Please enter id_client", "MUSIC_EXPLORER_SPOTIFY_ID_CLIENT")
             .expect("ID_CLIENT is required");
         let id_client_secret = input(
@@ -118,10 +118,14 @@ impl crate::Platform for SpotifyPlatform {
             "Please go to this url to get the authorization token: {}",
             url_oauth
         );
-        let resp = srv.await.unwrap();
-        let authorization =
-            SpotifyPlatform::code_to_token(&id_client, &id_client_secret, &resp.code).await;
-        Self { authorization }
+        match srv.await {
+            Ok(resp) => {
+                let authorization =
+                    SpotifyPlatform::code_to_token(&id_client, &id_client_secret, &resp.code).await;
+                Ok(Self { authorization })
+            }
+            Err(_) => Err(()),
+        }
     }
 
     async fn get_list(&self) -> Vec<crate::Music> {

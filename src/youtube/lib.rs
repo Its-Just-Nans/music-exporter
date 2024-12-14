@@ -135,7 +135,7 @@ impl YoutubePlatform {
 }
 
 impl crate::Platform for YoutubePlatform {
-    async fn init() -> Self {
+    async fn init() -> Result<Self, ()> {
         let api_key = input("Please enter API KEY", "MUSIC_EXPLORER_YOUTUBE_API_KEY")
             .expect("API KEY is required");
         let id_client = input("Please enter id_client", "MUSIC_EXPLORER_YOUTUBE_ID_CLIENT")
@@ -152,12 +152,16 @@ impl crate::Platform for YoutubePlatform {
             "Please go to this url to get the authorization token: {}",
             url_oauth
         );
-        let resp = srv.await.unwrap();
-        let authorization =
-            YoutubePlatform::code_to_token(&id_client, &id_client_secret, &resp.code).await;
-        Self {
-            api_key,
-            authorization,
+        match srv.await {
+            Ok(resp) => {
+                let authorization =
+                    YoutubePlatform::code_to_token(&id_client, &id_client_secret, &resp.code).await;
+                Ok(Self {
+                    api_key,
+                    authorization,
+                })
+            }
+            Err(_) => Err(()),
         }
     }
 

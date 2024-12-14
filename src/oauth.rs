@@ -1,4 +1,3 @@
-use anyhow::Result;
 use hyper::service::Service;
 use hyper::{server::conn::http1, Request, Response};
 use hyper_util::rt::tokio::TokioIo;
@@ -74,32 +73,77 @@ impl Service<Request<hyper::body::Incoming>> for OAuthService {
     }
 }
 
-pub async fn listen_for_code(port: u32) -> Result<ReceivedCode> {
+pub async fn listen_for_code(port: u32) -> Result<ReceivedCode, ()> {
     let bind = format!("127.0.0.1:{}", port);
     log::info!("Listening on: http://{}", bind);
-    let addr: SocketAddr = str::parse(&bind)?;
-    let listener = TcpListener::bind(addr).await?;
-    let (tx, rx) = oneshot::channel();
+    let addr: SocketAddr = match str::parse(&bind) {
+        Ok(addr) => addr,
+        Err(_) => {
+            log::error!("Invalid address: {}", bind);
+            return Err(());
+        }
+    };
+    let listener = match TcpListener::bind(addr).await {
+        Ok(listener) => listener,
+        Err(err) => {
+            log::error!("Failed to bind: {}", err);
+            return Err(());
+        }
+    };
+    let (tx, mut rx) = oneshot::channel();
     let tx = Arc::new(Mutex::new(Some(tx)));
 
-    // Accept a single connection
-    let (stream, _) = listener.accept().await?;
-
-    let io = TokioIo::new(stream);
-
-    // Create the service
-    let service = OAuthService { tx: tx.clone() };
-
-    // Process the connection with our service
     let handle = tokio::spawn(async move {
+        // Accept a single connection
+        let (stream, _) = match listener.accept().await {
+            Ok((stream, _)) => (stream, addr),
+            Err(err) => {
+                eprintln!("Error accepting connection: {}", err);
+                return;
+            }
+        };
+        let io = TokioIo::new(stream);
+
+        // Create the service
+        let service = OAuthService { tx: tx.clone() };
+        // Process the connection with our service
         if let Err(err) = http1::Builder::new().serve_connection(io, service).await {
             eprintln!("Error serving connection: {}", err);
         }
     });
 
+    let mut received_code = None;
     // Wait for the callback to be processed
-    let received_code = rx.await?;
-    log::info!("Authorization code received - closing server");
+    loop {
+        tokio::select! {
+            v1 = (&mut rx) => {
+                if received_code.is_none(){
+                    received_code = Some(v1);
+                    break;
+                }
+            },
+            _ = tokio::signal::ctrl_c()  => {
+                println!("CTRL+C was used");
+                break;
+            }
+        }
+    }
+    println!("Closing server");
     handle.abort();
-    Ok(received_code)
+    match received_code {
+        Some(v) => match v {
+            Ok(v) => {
+                log::info!("Authorization code received - closing server");
+                Ok(v)
+            }
+            Err(_) => {
+                log::info!("Error receiving authorization code");
+                Err(())
+            }
+        },
+        None => {
+            log::info!("CTRL+C was used");
+            Err(())
+        }
+    }
 }
