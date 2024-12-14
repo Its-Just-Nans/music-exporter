@@ -115,7 +115,7 @@ impl crate::Platform for SpotifyPlatform {
         // start the server in a thread
         let srv = listen_for_code(8000);
         println!(
-            "Please go to this url to get the authorization token: {}",
+            "Please go to this url to get the authorization token (or hit CTRCL+C): {}",
             url_oauth
         );
         match srv.await {
