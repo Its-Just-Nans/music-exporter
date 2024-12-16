@@ -73,6 +73,46 @@ impl YoutubePlatform {
         json_response.access_token
     }
 
+    fn clean_title(title: &str) -> String {
+        let mut parentheses = None;
+        let mut acc = None;
+        let parts = title.bytes().enumerate().map(|(idx, c)| match c {
+            b'(' => {
+                parentheses = Some(idx);
+                None
+            }
+            b'[' => {
+                acc = Some(idx);
+                None
+            }
+            b']' => {
+                if let Some(i) = acc {
+                    acc = None;
+                    Some(title[i..idx + 1].to_string())
+                } else {
+                    None
+                }
+            }
+            b')' => {
+                if let Some(i) = parentheses {
+                    parentheses = None;
+                    Some(title[i..idx + 1].to_string())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        });
+        let mut cleaned_title = title.to_string();
+        for part in parts.flatten() {
+            if part.to_lowercase().contains("offic") {
+                let to_replace = format!(" {}", part);
+                cleaned_title = cleaned_title.replace(&to_replace, "");
+            }
+        }
+        cleaned_title
+    }
+
     async fn get_playlist_items(
         &self,
         playlist_id: &str,
@@ -114,7 +154,7 @@ impl YoutubePlatform {
                     .unwrap_or_else(|| "Unknown".to_string())
                     .replace(" - Topic", "");
                 crate::Music {
-                    title: item.snippet.title.clone(),
+                    title: Self::clean_title(&item.snippet.title),
                     author,
                     thumbnail: Some(format!(
                         "https://img.youtube.com/vi/{}/default.jpg",
@@ -181,5 +221,22 @@ impl crate::Platform for YoutubePlatform {
             }
         }
         items
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_clean_title() {
+        let title = "title (feat. artist)";
+        assert_eq!(YoutubePlatform::clean_title(title), "title (feat. artist)");
+        let title = "title (audio officiel)";
+        assert_eq!(YoutubePlatform::clean_title(title), "title");
+        let title = "title [new]";
+        assert_eq!(YoutubePlatform::clean_title(title), "title [new]");
+        let title = "title [official video]";
+        assert_eq!(YoutubePlatform::clean_title(title), "title");
     }
 }

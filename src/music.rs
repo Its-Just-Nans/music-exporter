@@ -30,7 +30,7 @@ use std::collections::HashSet;
 pub fn unique_music(music_vec: Vec<Music>) -> Vec<Music> {
     let mut unique_vec = Vec::new();
     let mut seen = HashSet::new();
-
+    let mut dup_count = 0;
     for music in music_vec {
         if seen.insert((
             music.normalized_title().clone(),
@@ -38,9 +38,10 @@ pub fn unique_music(music_vec: Vec<Music>) -> Vec<Music> {
         )) {
             unique_vec.push(music);
         } else {
-            log::info!("Duplicate: {} by {}", music.title, music.author);
+            log::debug!("Duplicate: {} by {}", music.title, music.author);
+            dup_count += 1;
         }
     }
-
+    log::info!("Duplicates: {}", dup_count);
     unique_vec
 }
