@@ -4,7 +4,7 @@
 use reqwest::Client;
 
 use super::types::ApiResponse;
-use crate::utils::input;
+use crate::{custom_env, utils::input_env};
 
 #[derive(Default)]
 pub struct DeezerPlatform {
@@ -66,14 +66,14 @@ impl DeezerPlatform {
 
 impl crate::Platform for DeezerPlatform {
     async fn init() -> Result<Self, ()> {
-        let cookie = input(
+        let cookie = input_env(
             "Please enter your deezer cookie",
-            "MUSIC_EXPORTER_DEEZER_COOKIE",
+            custom_env!("DEEZER_COOKIE"),
         )
         .expect("COOKIE is required");
-        let user_id = input(
+        let user_id = input_env(
             "Please enter your deezer user id",
-            "MUSIC_EXPORTER_DEEZER_USER_ID",
+            custom_env!("DEEZER_USER_ID"),
         )
         .expect("USER_ID is required");
 

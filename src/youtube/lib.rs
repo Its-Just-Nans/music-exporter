@@ -4,7 +4,7 @@
 use reqwest::Client;
 
 use super::types::{APIResponse, GoogleAccessToken, PlaylistItems};
-use crate::{oauth::listen_for_code, utils::input};
+use crate::{custom_env, oauth::listen_for_code, utils::input_env};
 
 #[derive(Default)]
 pub struct YoutubePlatform {
@@ -176,13 +176,13 @@ impl YoutubePlatform {
 
 impl crate::Platform for YoutubePlatform {
     async fn init() -> Result<Self, ()> {
-        let api_key = input("Please enter API KEY", "MUSIC_EXPLORER_YOUTUBE_API_KEY")
+        let api_key = input_env("Please enter API KEY", custom_env!("YOUTUBE_API_KEY"))
             .expect("API KEY is required");
-        let id_client = input("Please enter id_client", "MUSIC_EXPLORER_YOUTUBE_ID_CLIENT")
+        let id_client = input_env("Please enter id_client", custom_env!("YOUTUBE_ID_CLIENT"))
             .expect("ID_CLIENT is required");
-        let id_client_secret = input(
+        let id_client_secret = input_env(
             "Please enter id_client_secret",
-            "MUSIC_EXPLORER_YOUTUBE_ID_CLIENT_SECRET",
+            custom_env!("YOUTUBE_ID_CLIENT_SECRET"),
         )
         .expect("ID_CLIENT_SECRET is required");
         let url_oauth = format!("https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&scope=https://www.googleapis.com/auth/youtube.readonly&response_type=code", id_client.clone(), "http://localhost:8000");

@@ -5,8 +5,9 @@ use reqwest::Client;
 
 use super::types::{PlaylistItems, SpotifyAccessToken};
 use crate::{
+    custom_env,
     oauth::listen_for_code,
-    utils::{input, to_base_64},
+    utils::{input_env, to_base_64},
 };
 
 #[derive(Default)]
@@ -92,11 +93,11 @@ impl SpotifyPlatform {
 
 impl crate::Platform for SpotifyPlatform {
     async fn init() -> Result<Self, ()> {
-        let id_client = input("Please enter id_client", "MUSIC_EXPLORER_SPOTIFY_ID_CLIENT")
+        let id_client = input_env("Please enter id_client", custom_env!("SPOTIFY_ID_CLIENT"))
             .expect("ID_CLIENT is required");
-        let id_client_secret = input(
+        let id_client_secret = input_env(
             "Please enter id_client_secret",
-            "MUSIC_EXPLORER_SPOTIFY_ID_CLIENT_SECRET",
+            custom_env!("SPOTIFY_ID_CLIENT_SECRET"),
         )
         .expect("ID_CLIENT_SECRET is required");
         let url_oauth = url::Url::parse_with_params(

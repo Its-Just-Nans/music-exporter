@@ -2,6 +2,13 @@ use std::path::PathBuf;
 
 use crate::{music, DeezerPlatform, Music, SpotifyPlatform, YoutubePlatform};
 
+#[macro_export]
+macro_rules! custom_env {
+    ($($arg:tt)*) => {
+        concat!("MUSIC_EXPORTER_", $($arg)*)
+    };
+}
+
 pub trait Platform {
     fn init() -> impl std::future::Future<Output = Result<Self, ()>> + Send
     where
@@ -63,7 +70,7 @@ pub async fn cli_main(music_file: PathBuf, env_path: Option<PathBuf>, platforms:
     write_to_file(&music_file, items);
 }
 
-pub fn input(txt: &str, env_name: &str) -> Option<String> {
+pub fn input_env(txt: &str, env_name: &str) -> Option<String> {
     use std::io::{stdin, stdout, Write};
     if let Ok(val) = std::env::var(env_name) {
         return Some(val);
