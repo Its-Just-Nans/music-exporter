@@ -3,6 +3,7 @@ name = "music-exporter"
 version = "1.0.7"
 authors = ["n4n5 <its.just.n4n5@gmail.com>"]
 description = "export music from different sources"
+documentation = "https://docs.rs/music-exporter"
 edition = "2021"
 license = "MIT"
 homepage = "https://github.com/Its-Just-Nans/music-exporter"
