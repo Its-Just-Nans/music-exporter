@@ -1,18 +1,34 @@
+//! Music struct and utility functions
+
+/// Music struct
 #[derive(Debug, Ord, Eq, PartialOrd, serde::Deserialize, serde::Serialize, Clone)]
 pub struct Music {
+    /// Author of the music
     pub author: String,
+
+    /// Title of the music
     pub title: String,
+
+    /// URL of the music
     pub url: Option<String>,
+
+    /// Thumbnail of the music
     pub thumbnail: Option<String>,
+
+    /// Duration of the music
     pub date: Option<String>,
+
+    /// Album of the music
     pub album: Option<String>,
 }
 
 impl Music {
+    /// normalized title
     fn normalized_title(&self) -> String {
         self.title.trim().to_lowercase()
     }
 
+    /// normalized author
     fn normalized_author(&self) -> String {
         self.author.trim().to_lowercase()
     }
@@ -27,6 +43,7 @@ impl PartialEq for Music {
 
 use std::collections::HashSet;
 
+/// Remove duplicates from a vector of Music
 pub fn unique_music(music_vec: Vec<Music>) -> Vec<Music> {
     let mut unique_vec = Vec::new();
     let mut seen = HashSet::new();

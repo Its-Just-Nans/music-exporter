@@ -1,20 +1,31 @@
 //! Music exporter library
 
-// providers
+#![deny(
+    missing_docs,
+    clippy::all,
+    clippy::missing_docs_in_private_items,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::cargo
+)]
+#![warn(clippy::multiple_crate_versions)]
+
+mod macros;
+pub(crate) mod music;
+pub(crate) mod oauth;
+pub(crate) mod utils;
+
 mod deezer;
 mod spotify;
 mod youtube;
+
 pub use deezer::lib::DeezerPlatform;
+pub use music::Music;
 pub use spotify::lib::SpotifyPlatform;
 pub use youtube::lib::YoutubePlatform;
 
-pub mod music;
-pub use music::Music;
-mod oauth;
-
-pub mod utils;
 pub use utils::cli_main;
+pub use utils::Platform;
 pub use utils::PlatformType;
 
-/// Platform trait to implement for each platform
-pub use utils::Platform;
+pub(crate) use macros::custom_env;

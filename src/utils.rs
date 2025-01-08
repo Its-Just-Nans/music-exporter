@@ -1,27 +1,32 @@
-use std::path::PathBuf;
+//! Utility functions
 
 use crate::{music, DeezerPlatform, Music, SpotifyPlatform, YoutubePlatform};
+use std::path::PathBuf;
 
-#[macro_export]
-macro_rules! custom_env {
-    ($($arg:tt)*) => {
-        concat!("MUSIC_EXPORTER_", $($arg)*)
-    };
-}
-
+/// Platform trait
 pub trait Platform {
+    /// Initialize the platform
     fn init() -> impl std::future::Future<Output = Result<Self, ()>> + Send
     where
         Self: Sized;
+
+    /// Get the list of music
     fn get_list(&self) -> impl std::future::Future<Output = Vec<Music>> + Send;
 }
 
+/// Platform type
 pub enum PlatformType {
+    /// Deezer platform
     Deezer,
+
+    /// Spotify platform
     Spotify,
+
+    /// Youtube platform
     Youtube,
 }
 
+/// Get the list of music from the selected platforms
 pub async fn get_list(platforms: &[PlatformType]) -> Vec<Music> {
     let mut items = vec![];
     for platform in platforms {
@@ -46,6 +51,7 @@ pub async fn get_list(platforms: &[PlatformType]) -> Vec<Music> {
     items
 }
 
+/// Main function for the CLI
 pub async fn cli_main(music_file: PathBuf, env_path: Option<PathBuf>, platforms: &[PlatformType]) {
     match env_path {
         Some(path) => {
@@ -70,6 +76,9 @@ pub async fn cli_main(music_file: PathBuf, env_path: Option<PathBuf>, platforms:
     write_to_file(&music_file, items);
 }
 
+/// Input from the environment
+/// # Panics
+/// Panics if the input is not correct
 pub fn input_env(txt: &str, env_name: &str) -> Option<String> {
     use std::io::{stdin, stdout, Write};
     if let Ok(val) = std::env::var(env_name) {
@@ -91,6 +100,9 @@ pub fn input_env(txt: &str, env_name: &str) -> Option<String> {
     Some(s)
 }
 
+/// Write to file
+/// # Panics
+/// Panics if the file cannot be created
 pub fn write_to_file(filename: &PathBuf, data: Vec<crate::Music>) {
     use serde::Serialize;
     use std::fs::File;
@@ -103,6 +115,9 @@ pub fn write_to_file(filename: &PathBuf, data: Vec<crate::Music>) {
     writer.flush().unwrap();
 }
 
+/// Read from file
+/// # Panics
+/// Panics if the file cannot be created
 pub fn read_from_file(filename: &PathBuf, items: &mut Vec<crate::Music>) {
     use std::fs::File;
     use std::io::BufReader;
@@ -113,6 +128,7 @@ pub fn read_from_file(filename: &PathBuf, items: &mut Vec<crate::Music>) {
     items.extend(serde::de::Deserialize::deserialize(&mut de).unwrap_or(vec![]));
 }
 
+/// Convert to base64
 pub fn to_base_64(input: &str) -> String {
     use base64::Engine;
     let mut output = String::new();

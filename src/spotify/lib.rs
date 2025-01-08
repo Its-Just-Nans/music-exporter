@@ -1,4 +1,4 @@
-//!
+//! Spotify platform implementation
 //! Useful link https://developer.spotify.com/documentation/web-api
 
 use reqwest::Client;
@@ -10,12 +10,17 @@ use crate::{
     utils::{input_env, to_base_64},
 };
 
+/// Spotify platform
 #[derive(Default)]
 pub struct SpotifyPlatform {
+    /// Authorization token
     authorization: String,
 }
 
 impl SpotifyPlatform {
+    /// Get the authorization token from the code
+    /// # Panics
+    /// If the request fails
     async fn code_to_token(id_client: &str, id_client_secret: &str, code: &str) -> String {
         let authorization_header = format!(
             "Basic {}",
@@ -38,6 +43,9 @@ impl SpotifyPlatform {
         json_response.access_token
     }
 
+    /// Get the playlist items
+    /// # Panics
+    /// If the request fails
     async fn get_playlist_items(&self, offset: Option<u64>) -> (Vec<crate::Music>, Option<u64>) {
         let url = url::Url::parse_with_params(
             "https://api.spotify.com/v1/me/tracks",

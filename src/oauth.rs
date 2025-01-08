@@ -1,3 +1,5 @@
+//! OAuth2 authorization code flow helper
+
 use hyper::service::Service;
 use hyper::{server::conn::http1, Request, Response};
 use hyper_util::rt::tokio::TokioIo;
@@ -9,15 +11,22 @@ use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use url::Url;
 
+/// Received authorization code
 #[derive(Debug, Clone)]
 pub struct ReceivedCode {
+    /// Authorization code
     pub code: String,
 }
 
+/// OAuth2 service
 struct OAuthService {
+    /// Channel sender
     tx: Arc<Mutex<Option<oneshot::Sender<ReceivedCode>>>>,
 }
 
+/// Handle the callback from the OAuth2 server
+/// # Panics
+/// Panics if the channel sender is not available
 async fn handle_callback(
     req: Request<hyper::body::Incoming>,
     tx: Arc<Mutex<Option<oneshot::Sender<ReceivedCode>>>>,
@@ -73,6 +82,9 @@ impl Service<Request<hyper::body::Incoming>> for OAuthService {
     }
 }
 
+/// Listen for the authorization code
+/// # Errors
+/// Returns `Err` if the server fails to bind or if the authorization code is not received
 pub async fn listen_for_code(port: u32) -> Result<ReceivedCode, ()> {
     let bind = format!("127.0.0.1:{}", port);
     log::info!("Listening on: http://{}", bind);

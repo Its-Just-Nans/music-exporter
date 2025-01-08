@@ -1,4 +1,4 @@
-//!
+//! Youtube platform implementation
 //! Useful link https://developers.google.com/youtube/v3/docs/playlistItems#resource
 
 use reqwest::Client;
@@ -6,18 +6,27 @@ use reqwest::Client;
 use super::types::{APIResponse, GoogleAccessToken, PlaylistItems};
 use crate::{custom_env, oauth::listen_for_code, utils::input_env};
 
+/// Youtube platform
 #[derive(Default)]
 pub struct YoutubePlatform {
+    /// API key
     api_key: String,
+
+    /// Authorization token
     authorization: String,
 }
 
 impl YoutubePlatform {
+    /// Create a new YoutubePlatform
     pub fn new() -> Self {
         Self {
             ..Default::default()
         }
     }
+
+    /// Get the liked playlist id
+    /// # Panics
+    /// If the request fails
     async fn get_liked_playlist_id(&self) -> String {
         let authorize_url = url::Url::parse_with_params(
             "https://youtube.googleapis.com/youtube/v3/channels",
@@ -46,16 +55,19 @@ impl YoutubePlatform {
                 panic!("Failed to get of the liked playlist {}", e);
             }
         };
-        return json_response
+        json_response
             .items
             .first()
             .unwrap()
             .content_details
             .related_playlists
             .likes
-            .clone();
+            .clone()
     }
 
+    /// Get the authorization token from the code
+    /// # Panics
+    /// If the request fails
     async fn code_to_token(id_client: &str, id_client_secret: &str, code: &str) -> String {
         let resp = Client::new()
             .post("https://oauth2.googleapis.com/token")
@@ -73,6 +85,7 @@ impl YoutubePlatform {
         json_response.access_token
     }
 
+    /// Clean the title
     fn clean_title(title: &str) -> String {
         let mut parentheses = None;
         let mut acc = None;
@@ -113,6 +126,9 @@ impl YoutubePlatform {
         cleaned_title
     }
 
+    /// Get the playlist items
+    /// # Panics
+    /// If the request fails
     async fn get_playlist_items(
         &self,
         playlist_id: &str,
@@ -228,6 +244,9 @@ impl crate::Platform for YoutubePlatform {
 mod tests {
     use super::*;
 
+    /// Test the clean_title function
+    /// # Panics
+    /// If the assertion fails
     #[test]
     fn test_clean_title() {
         let title = "title (feat. artist)";

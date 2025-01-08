@@ -1,4 +1,4 @@
-//!
+//! Deezer platform implementation
 //! Useful link https://developers.deezer.com/api
 
 use reqwest::Client;
@@ -6,13 +6,20 @@ use reqwest::Client;
 use super::types::ApiResponse;
 use crate::{custom_env, utils::input_env};
 
+/// Deezer platform implementation
 #[derive(Default)]
 pub struct DeezerPlatform {
+    /// Deezer cookie
     cookie: String,
+
+    /// Deezer user id
     user_id: String,
 }
 
 impl DeezerPlatform {
+    /// Get playlist items
+    /// # Panics
+    /// Panics if the response is not a valid json
     async fn get_playlist_items(&self, offset: Option<u64>) -> (Vec<crate::Music>, Option<u64>) {
         let url = url::Url::parse_with_params(
             &format!("https://api.deezer.com/user/{}/tracks", self.user_id),
