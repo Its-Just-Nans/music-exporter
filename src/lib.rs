@@ -16,6 +16,7 @@ pub(crate) mod oauth;
 pub(crate) mod utils;
 
 mod deezer;
+mod errors;
 mod spotify;
 mod youtube;
 
@@ -24,7 +25,8 @@ pub use music::Music;
 pub use spotify::lib::SpotifyPlatform;
 pub use youtube::lib::YoutubePlatform;
 
-pub use utils::cli_main;
+pub use utils::music_exporter_main;
+pub use utils::MusicExporterArgs;
 pub use utils::Platform;
 pub use utils::PlatformType;
 

@@ -11,6 +11,8 @@ use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use url::Url;
 
+use crate::errors::MusicExporterError;
+
 /// Received authorization code
 #[derive(Debug, Clone)]
 pub struct ReceivedCode {
@@ -25,15 +27,15 @@ struct OAuthService {
 }
 
 /// Handle the callback from the OAuth2 server
-/// # Panics
-/// Panics if the channel sender is not available
+/// # Errors
+/// Error if the channel sender is not available
 async fn handle_callback(
     req: Request<hyper::body::Incoming>,
     tx: Arc<Mutex<Option<oneshot::Sender<ReceivedCode>>>>,
-) -> Response<String> {
+) -> Result<Response<String>, MusicExporterError> {
     let uri = req.uri();
 
-    match Url::parse(&format!("http://localhost{}", uri)) {
+    let resp = match Url::parse(&format!("http://localhost{}", uri)) {
         Ok(url) => {
             let params: std::collections::HashMap<_, _> = url.query_pairs().collect();
 
@@ -43,40 +45,36 @@ async fn handle_callback(
                 };
 
                 // Send the code through the channel
-                if let Some(tx) = tx.lock().unwrap().take() {
+                if let Some(tx) = tx.lock()?.take() {
                     let _ = tx.send(received_code);
                 }
 
-                Response::builder()
-                    .status(200)
-                    .body(String::from(
-                        "Authorization successful! You can close this window.",
-                    ))
-                    .unwrap()
+                Response::builder().status(200).body(String::from(
+                    "Authorization successful! You can close this window.",
+                ))?
             } else {
                 Response::builder()
                     .status(400)
-                    .body(String::from("Missing authorization code"))
-                    .unwrap()
+                    .body(String::from("Missing authorization code"))?
             }
         }
         Err(_) => Response::builder()
             .status(400)
-            .body(String::from("Invalid callback URL"))
-            .unwrap(),
-    }
+            .body(String::from("Invalid callback URL"))?,
+    };
+    Ok(resp)
 }
 
 impl Service<Request<hyper::body::Incoming>> for OAuthService {
     type Response = Response<String>;
-    type Error = hyper::Error;
+    type Error = MusicExporterError;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn call(&self, req: Request<hyper::body::Incoming>) -> Self::Future {
         let tx = self.tx.clone();
 
         Box::pin(async move {
-            let response = handle_callback(req, tx).await;
+            let response = handle_callback(req, tx).await?;
             Ok(response)
         })
     }

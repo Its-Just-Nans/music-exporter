@@ -1,10 +1,14 @@
 //! Youtube platform implementation
 //! Useful link https://developers.google.com/youtube/v3/docs/playlistItems#resource
 
+use std::{future::Future, pin::Pin};
+
 use reqwest::Client;
 
 use super::types::{APIResponse, GoogleAccessToken, PlaylistItems};
-use crate::{custom_env, oauth::listen_for_code, utils::input_env};
+use crate::{
+    custom_env, errors::MusicExporterError, oauth::listen_for_code, utils::input_env, Music,
+};
 
 /// Youtube platform
 #[derive(Default)]
@@ -25,9 +29,9 @@ impl YoutubePlatform {
     }
 
     /// Get the liked playlist id
-    /// # Panics
+    /// # Errors
     /// If the request fails
-    async fn get_liked_playlist_id(&self) -> String {
+    async fn get_liked_playlist_id(&self) -> Result<String, MusicExporterError> {
         let authorize_url = url::Url::parse_with_params(
             "https://youtube.googleapis.com/youtube/v3/channels",
             &[
@@ -35,40 +39,40 @@ impl YoutubePlatform {
                 ("mine", "true"),
                 ("key", &self.api_key),
             ],
-        )
-        .unwrap();
+        )?;
         let resp = Client::new()
             .get(authorize_url)
             .header("Authorization", format!("Bearer {}", &self.authorization))
             .header("Accept", "application/json")
             .send()
-            .await
-            .unwrap();
+            .await?;
         let json_response = match resp.status() {
-            reqwest::StatusCode::OK => match resp.json::<APIResponse>().await {
-                Ok(parsed) => parsed,
-                Err(_) => {
-                    panic!("Failed to parse response of the liked playlist");
-                }
-            },
-            e => {
-                panic!("Failed to get of the liked playlist {}", e);
+            reqwest::StatusCode::OK => resp.json::<APIResponse>().await?,
+            err => {
+                return Err(MusicExporterError::new(format!(
+                    "Failed to get of the liked playlist {}",
+                    err
+                )))
             }
         };
-        json_response
-            .items
-            .first()
-            .unwrap()
-            .content_details
-            .related_playlists
-            .likes
-            .clone()
+        match json_response.items.first() {
+            Some(first_playlist) => Ok(first_playlist
+                .content_details
+                .related_playlists
+                .likes
+                .clone()),
+            None => Err(MusicExporterError::new("Cannot get liked playlist")),
+        }
     }
 
     /// Get the authorization token from the code
-    /// # Panics
+    /// # Errors
     /// If the request fails
-    async fn code_to_token(id_client: &str, id_client_secret: &str, code: &str) -> String {
+    async fn code_to_token(
+        id_client: &str,
+        id_client_secret: &str,
+        code: &str,
+    ) -> Result<String, MusicExporterError> {
         let resp = Client::new()
             .post("https://oauth2.googleapis.com/token")
             .header("Accept", "application/json")
@@ -80,9 +84,9 @@ impl YoutubePlatform {
                 ("grant_type", "authorization_code"),
             ])
             .send()
-            .await;
-        let json_response = resp.unwrap().json::<GoogleAccessToken>().await.unwrap();
-        json_response.access_token
+            .await?;
+        let json_response = resp.json::<GoogleAccessToken>().await?;
+        Ok(json_response.access_token)
     }
 
     /// Clean the title
@@ -127,36 +131,33 @@ impl YoutubePlatform {
     }
 
     /// Get the playlist items
-    /// # Panics
+    /// # Errors
     /// If the request fails
     async fn get_playlist_items(
         &self,
         playlist_id: &str,
         page_token: Option<String>,
-    ) -> (Vec<crate::Music>, Option<String>) {
+    ) -> Result<(Vec<crate::Music>, Option<String>), MusicExporterError> {
         let url = url::Url::parse_with_params("https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet%2CcontentDetails&maxResults=50", 
         &[("playlistId", playlist_id),
-        ("key", &self.api_key)]).unwrap();
+        ("key", &self.api_key)])?;
         let resp = Client::new()
             .get(url)
             .header("Authorization", format!("Bearer {}", &self.authorization))
             .header("Accept", "application/json")
             .query(&[("pageToken", page_token.unwrap_or_default())])
             .send()
-            .await
-            .unwrap();
+            .await?;
         let json_response = match resp.status() {
             reqwest::StatusCode::OK => {
                 // on success, parse our JSON to an APIResponse
-                match resp.json::<PlaylistItems>().await {
-                    Ok(parsed) => parsed,
-                    Err(err) => {
-                        panic!("Failed to parse response of the playlist items {}", err);
-                    }
-                }
+                resp.json::<PlaylistItems>().await?
             }
             err => {
-                panic!("Failed to get response of the playlist items {}", err);
+                return Err(MusicExporterError::new(format!(
+                    "Failed to get response for the playlist items {}",
+                    err
+                )))
             }
         };
         let items = json_response
@@ -186,57 +187,61 @@ impl YoutubePlatform {
             })
             .collect();
         log::info!("Next page token: {:?}", json_response.next_page_token);
-        (items, json_response.next_page_token)
+        Ok((items, json_response.next_page_token))
     }
 }
 
 impl crate::Platform for YoutubePlatform {
-    async fn init() -> Result<Self, ()> {
-        let api_key = input_env("Please enter API KEY", custom_env!("YOUTUBE_API_KEY"))
-            .expect("API KEY is required");
-        let id_client = input_env("Please enter id_client", custom_env!("YOUTUBE_ID_CLIENT"))
-            .expect("ID_CLIENT is required");
-        let id_client_secret = input_env(
-            "Please enter id_client_secret",
-            custom_env!("YOUTUBE_ID_CLIENT_SECRET"),
-        )
-        .expect("ID_CLIENT_SECRET is required");
-        let url_oauth = format!("https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&scope=https://www.googleapis.com/auth/youtube.readonly&response_type=code", id_client.clone(), "http://localhost:8000");
-        // start the server in a thread
-        let srv = listen_for_code(8000);
-        println!(
-            "Please go to this url to get the authorization token (or hit CTRCL+C): {}",
-            url_oauth
-        );
-        match srv.await {
-            Ok(resp) => {
-                let authorization =
-                    YoutubePlatform::code_to_token(&id_client, &id_client_secret, &resp.code).await;
-                Ok(Self {
-                    api_key,
-                    authorization,
-                })
+    fn try_new() -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
+        Box::pin(async {
+            let api_key = input_env("Please enter API KEY", custom_env!("YOUTUBE_API_KEY"))?;
+            let id_client = input_env("Please enter id_client", custom_env!("YOUTUBE_ID_CLIENT"))?;
+            let id_client_secret = input_env(
+                "Please enter id_client_secret",
+                custom_env!("YOUTUBE_ID_CLIENT_SECRET"),
+            )?;
+            let url_oauth = format!("https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&scope=https://www.googleapis.com/auth/youtube.readonly&response_type=code", id_client.clone(), "http://localhost:8000");
+            // start the server in a thread
+            let srv = listen_for_code(8000);
+            println!(
+                "Please go to this url to get the authorization token (or hit CTRCL+C): {}",
+                url_oauth
+            );
+            match srv.await {
+                Ok(resp) => {
+                    let authorization =
+                        YoutubePlatform::code_to_token(&id_client, &id_client_secret, &resp.code)
+                            .await?;
+                    Ok(Self {
+                        api_key,
+                        authorization,
+                    })
+                }
+                Err(_) => Err(MusicExporterError::new("Failed to get the code")),
             }
-            Err(_) => Err(()),
-        }
+        })
     }
 
-    async fn get_list(&self) -> Vec<crate::Music> {
-        let liked_playlist_id = self.get_liked_playlist_id().await;
-        println!("Liked playlist id: {}", liked_playlist_id);
-        let mut items = Vec::new();
-        let mut page_token = None;
-        loop {
-            let (new_items, new_page_token) = self
-                .get_playlist_items(&liked_playlist_id, page_token)
-                .await;
-            items.extend(new_items);
-            page_token = new_page_token;
-            if page_token.is_none() {
-                break;
+    fn get_list<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<Music>, MusicExporterError>> + Send + 'a>> {
+        Box::pin(async {
+            let liked_playlist_id = self.get_liked_playlist_id().await?;
+            println!("Liked playlist id: {}", liked_playlist_id);
+            let mut items = Vec::new();
+            let mut page_token = None;
+            loop {
+                let (new_items, new_page_token) = self
+                    .get_playlist_items(&liked_playlist_id, page_token)
+                    .await?;
+                items.extend(new_items);
+                page_token = new_page_token;
+                if page_token.is_none() {
+                    break;
+                }
             }
-        }
-        items
+            Ok(items)
+        })
     }
 }
 
