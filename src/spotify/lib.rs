@@ -1,9 +1,8 @@
 //! Spotify platform implementation
 //! Useful link https://developer.spotify.com/documentation/web-api
 
-use std::{future::Future, pin::Pin};
-
 use reqwest::Client;
+use std::{future::Future, pin::Pin};
 
 use super::types::{PlaylistItems, SpotifyAccessToken};
 use crate::{
@@ -11,7 +10,7 @@ use crate::{
     errors::MusicExporterError,
     oauth::listen_for_code,
     utils::{input_env, to_base_64},
-    Music,
+    Music, Platform,
 };
 
 /// Spotify platform
@@ -56,7 +55,7 @@ impl SpotifyPlatform {
     async fn get_playlist_items(
         &self,
         offset: Option<u64>,
-    ) -> Result<(Vec<crate::Music>, Option<u64>), MusicExporterError> {
+    ) -> Result<(Vec<Music>, Option<u64>), MusicExporterError> {
         let url = url::Url::parse_with_params(
             "https://api.spotify.com/v1/me/tracks",
             &[
@@ -85,7 +84,7 @@ impl SpotifyPlatform {
         let items = json_response
             .items
             .iter()
-            .map(|item| crate::Music {
+            .map(|item| Music {
                 title: item.track.name.clone(),
                 author: item.track.artists[0].name.clone(),
                 thumbnail: Some(item.track.album.images[0].url.clone()),
@@ -105,7 +104,7 @@ impl SpotifyPlatform {
     }
 }
 
-impl crate::Platform for SpotifyPlatform {
+impl Platform for SpotifyPlatform {
     fn try_new() -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
         Box::pin(async {
             let id_client = input_env("Please enter id_client", custom_env!("SPOTIFY_ID_CLIENT"))?;

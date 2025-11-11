@@ -1,13 +1,13 @@
 //! Youtube platform implementation
 //! Useful link https://developers.google.com/youtube/v3/docs/playlistItems#resource
 
-use std::{future::Future, pin::Pin};
-
 use reqwest::Client;
+use std::{future::Future, pin::Pin};
 
 use super::types::{APIResponse, GoogleAccessToken, PlaylistItems};
 use crate::{
     custom_env, errors::MusicExporterError, oauth::listen_for_code, utils::input_env, Music,
+    Platform,
 };
 
 /// Youtube platform
@@ -137,7 +137,7 @@ impl YoutubePlatform {
         &self,
         playlist_id: &str,
         page_token: Option<String>,
-    ) -> Result<(Vec<crate::Music>, Option<String>), MusicExporterError> {
+    ) -> Result<(Vec<Music>, Option<String>), MusicExporterError> {
         let url = url::Url::parse_with_params("https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet%2CcontentDetails&maxResults=50", 
         &[("playlistId", playlist_id),
         ("key", &self.api_key)])?;
@@ -170,7 +170,7 @@ impl YoutubePlatform {
                     .clone()
                     .unwrap_or_else(|| "Unknown".to_string())
                     .replace(" - Topic", "");
-                crate::Music {
+                Music {
                     title: Self::clean_title(&item.snippet.title),
                     author,
                     thumbnail: Some(format!(
@@ -191,7 +191,7 @@ impl YoutubePlatform {
     }
 }
 
-impl crate::Platform for YoutubePlatform {
+impl Platform for YoutubePlatform {
     fn try_new() -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
         Box::pin(async {
             let api_key = input_env("Please enter API KEY", custom_env!("YOUTUBE_API_KEY"))?;

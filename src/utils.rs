@@ -1,10 +1,11 @@
 //! Utility functions
 
 use clap::{Parser, ValueEnum};
+use serde::Serialize;
 use std::{
     fs::{self, File, OpenOptions},
     future::Future,
-    io::{BufReader, Write},
+    io::{BufReader, BufWriter, Write},
     path::PathBuf,
     pin::Pin,
 };
@@ -39,6 +40,17 @@ pub enum PlatformType {
     Youtube,
 }
 
+impl std::fmt::Display for PlatformType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let platform_str = match self {
+            PlatformType::Deezer => "Deezer",
+            PlatformType::Spotify => "Spotify",
+            PlatformType::Youtube => "Youtube",
+        };
+        write!(f, "{}", platform_str)
+    }
+}
+
 impl PlatformType {
     /// Try to init the plateform
     /// # Errors
@@ -59,17 +71,29 @@ impl PlatformType {
         let plateform: Box<dyn Platform + Send + Sync> = self.try_init().await?;
         plateform.get_list().await
     }
-}
 
-/// Get the list of music from the selected platforms
-/// # Errors
-/// Fails if fail to get lists
-pub async fn get_list(platforms: &[PlatformType]) -> Result<Vec<Music>, MusicExporterError> {
-    let mut items = vec![];
-    for platform in platforms {
-        items.extend(platform.get_list().await?);
+    /// Get the list of music from the selected platforms
+    /// # Errors
+    /// Fails if fail to get lists
+    pub async fn get_music_from_platforms(
+        platforms: &[PlatformType],
+    ) -> Result<Vec<Music>, MusicExporterError> {
+        let mut items = vec![];
+        for platform in platforms {
+            log::info!("Retreiving music of {}", platform);
+            items.extend(platform.get_list().await?);
+        }
+        Ok(items)
     }
-    Ok(items)
+
+    /// Get all the platform types
+    pub fn get_all_platform_type() -> Vec<PlatformType> {
+        vec![
+            PlatformType::Deezer,
+            PlatformType::Spotify,
+            PlatformType::Youtube,
+        ]
+    }
 }
 
 /// Music-exporter args
@@ -100,6 +124,20 @@ pub async fn music_exporter_main(
     env_path: Option<PathBuf>,
     platforms: &[PlatformType],
 ) -> Result<(), MusicExporterError> {
+    let items = music_exporter_lib(&music_file, env_path, platforms).await?;
+    log::info!("Unique items: {}", items.len());
+    write_to_file(&music_file, items)?;
+    Ok(())
+}
+
+/// Main function for the CLI
+/// # Errors
+/// Fails on error
+pub async fn music_exporter_lib(
+    music_file: &PathBuf,
+    env_path: Option<PathBuf>,
+    platforms: &[PlatformType],
+) -> Result<Vec<Music>, MusicExporterError> {
     match env_path {
         Some(path) => {
             dotenv::from_path(path).ok();
@@ -108,19 +146,14 @@ pub async fn music_exporter_main(
             dotenv::dotenv().ok();
         }
     }
-    let mut items = read_from_file(&music_file)?;
+    let mut items = read_from_file(music_file)?;
 
-    if platforms.is_empty() {
-        log::info!("No platform selected, using all platforms");
-    }
-    items.extend(get_list(platforms).await?);
+    items.extend(PlatformType::get_music_from_platforms(platforms).await?);
     // write to file
     log::info!("Total items: {}", items.len());
     let mut items = music::unique_music(items);
     items.sort();
-    log::info!("Unique items: {}", items.len());
-    write_to_file(&music_file, items)?;
-    Ok(())
+    Ok(items)
 }
 
 /// Input from the environment
@@ -148,13 +181,7 @@ pub fn input_env(txt: &str, env_name: &str) -> Result<String, MusicExporterError
 /// Write to file
 /// # Errors
 /// Error if the file cannot be created
-pub fn write_to_file(
-    filename: &PathBuf,
-    data: Vec<crate::Music>,
-) -> Result<(), MusicExporterError> {
-    use serde::Serialize;
-    use std::fs::File;
-    use std::io::{BufWriter, Write};
+pub fn write_to_file(filename: &PathBuf, data: Vec<Music>) -> Result<(), MusicExporterError> {
     let file = File::create(filename)?;
     let mut writer = BufWriter::new(file);
     let formatter = serde_json::ser::PrettyFormatter::with_indent(b"    ");

@@ -5,7 +5,7 @@ use reqwest::Client;
 use std::{future::Future, pin::Pin};
 
 use super::types::ApiResponse;
-use crate::{custom_env, errors::MusicExporterError, utils::input_env, Music};
+use crate::{Music, Platform, custom_env, errors::MusicExporterError, utils::input_env};
 
 /// Deezer platform implementation
 #[derive(Default)]
@@ -24,7 +24,7 @@ impl DeezerPlatform {
     async fn get_playlist_items(
         &self,
         offset: Option<u64>,
-    ) -> Result<(Vec<crate::Music>, Option<u64>), MusicExporterError> {
+    ) -> Result<(Vec<Music>, Option<u64>), MusicExporterError> {
         let url = url::Url::parse_with_params(
             &format!("https://api.deezer.com/user/{}/tracks", self.user_id),
             &[
@@ -43,7 +43,7 @@ impl DeezerPlatform {
         let items = json_response
             .data
             .iter()
-            .map(|item| crate::Music {
+            .map(|item| Music {
                 title: item.title.clone(),
                 author: item.artist.name.clone(),
                 thumbnail: Some(item.album.cover.clone()),
@@ -70,7 +70,7 @@ impl DeezerPlatform {
     }
 }
 
-impl crate::Platform for DeezerPlatform {
+impl Platform for DeezerPlatform {
     fn try_new() -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
         Box::pin(async {
             let cookie = input_env(
