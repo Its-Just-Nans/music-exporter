@@ -1,7 +1,7 @@
 use clap::Parser;
 use std::process::exit;
 
-use music_exporter::{music_exporter_main, MusicExporterArgs};
+use music_exporter::MusicExporter;
 
 #[tokio::main]
 async fn main() {
@@ -11,8 +11,8 @@ async fn main() {
         .format_target(false)
         .format_timestamp(None)
         .init();
-    let args = MusicExporterArgs::parse();
-    match music_exporter_main(args.music_file, args.env_file, &args.platforms).await {
+    let music_exp = MusicExporter::parse();
+    match music_exp.run_main().await {
         Ok(_) => {}
         Err(e) => {
             eprintln!("{}", e);
@@ -32,7 +32,7 @@ mod tests {
     #[tokio::test]
     async fn test_main() {
         let filename = PathBuf::from("data.json");
-        music_exporter_main(
+        MusicExporter::new_from_vars(
             filename,
             None,
             &[
@@ -41,6 +41,7 @@ mod tests {
                 // PlatformType::Youtube,
             ],
         )
+        .run_main()
         .await
         .unwrap();
     }

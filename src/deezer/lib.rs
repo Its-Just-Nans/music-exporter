@@ -5,7 +5,9 @@ use reqwest::Client;
 use std::{future::Future, pin::Pin};
 
 use super::types::ApiResponse;
-use crate::{Music, Platform, custom_env, errors::MusicExporterError, utils::input_env};
+use crate::{
+    custom_env, errors::MusicExporterError, utils::input_env, Music, MusicExporter, Platform,
+};
 
 /// Deezer platform implementation
 #[derive(Default)]
@@ -71,7 +73,9 @@ impl DeezerPlatform {
 }
 
 impl Platform for DeezerPlatform {
-    fn try_new() -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
+    fn try_new(
+        _music_exp: &MusicExporter,
+    ) -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
         Box::pin(async {
             let cookie = input_env(
                 "Please enter your deezer cookie",

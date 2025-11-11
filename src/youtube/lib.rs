@@ -7,7 +7,7 @@ use std::{future::Future, pin::Pin};
 use super::types::{APIResponse, GoogleAccessToken, PlaylistItems};
 use crate::{
     custom_env, errors::MusicExporterError, oauth::listen_for_code, utils::input_env, Music,
-    Platform,
+    MusicExporter, Platform,
 };
 
 /// Youtube platform
@@ -18,16 +18,12 @@ pub struct YoutubePlatform {
 
     /// Authorization token
     authorization: String,
+
+    /// custom playlist id
+    playlist_id: Option<String>,
 }
 
 impl YoutubePlatform {
-    /// Create a new YoutubePlatform
-    pub fn new() -> Self {
-        Self {
-            ..Default::default()
-        }
-    }
-
     /// Get the liked playlist id
     /// # Errors
     /// If the request fails
@@ -192,7 +188,10 @@ impl YoutubePlatform {
 }
 
 impl Platform for YoutubePlatform {
-    fn try_new() -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
+    fn try_new(
+        music_exp: &MusicExporter,
+    ) -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
+        let playlist_id = music_exp.youtube_playlist_id.clone();
         Box::pin(async {
             let api_key = input_env("Please enter API KEY", custom_env!("YOUTUBE_API_KEY"))?;
             let id_client = input_env("Please enter id_client", custom_env!("YOUTUBE_ID_CLIENT"))?;
@@ -215,6 +214,7 @@ impl Platform for YoutubePlatform {
                     Ok(Self {
                         api_key,
                         authorization,
+                        playlist_id,
                     })
                 }
                 Err(_) => Err(MusicExporterError::new("Failed to get the code")),
@@ -226,14 +226,19 @@ impl Platform for YoutubePlatform {
         &'a self,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Music>, MusicExporterError>> + Send + 'a>> {
         Box::pin(async {
-            let liked_playlist_id = self.get_liked_playlist_id().await?;
-            println!("Liked playlist id: {}", liked_playlist_id);
+            let playlist_id = if let Some(play_id) = &self.playlist_id {
+                log::info!("Using custom id: {}", play_id);
+                play_id.clone()
+            } else {
+                let liked_playlist_id = self.get_liked_playlist_id().await?;
+                log::info!("Liked playlist id: {}", liked_playlist_id);
+                liked_playlist_id
+            };
             let mut items = Vec::new();
             let mut page_token = None;
             loop {
-                let (new_items, new_page_token) = self
-                    .get_playlist_items(&liked_playlist_id, page_token)
-                    .await?;
+                let (new_items, new_page_token) =
+                    self.get_playlist_items(&playlist_id, page_token).await?;
                 items.extend(new_items);
                 page_token = new_page_token;
                 if page_token.is_none() {

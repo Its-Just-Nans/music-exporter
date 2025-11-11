@@ -1,11 +1,6 @@
 //! music-exporter errors
 
-use serde_json::Value;
-use std::{
-    fmt, io,
-    sync::{Arc, MutexGuard, PoisonError},
-};
-use url::ParseError;
+use std::sync::{Arc, MutexGuard, PoisonError};
 
 use crate::oauth::ReceivedCode;
 
@@ -28,8 +23,8 @@ impl Clone for MusicExporterError {
         }
     }
 }
-impl fmt::Display for MusicExporterError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for MusicExporterError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.source {
             Some(src) => write!(f, "{} - caused by: {}", self.message, src),
             None => write!(f, "{}", self.message),
@@ -61,8 +56,8 @@ impl From<String> for MusicExporterError {
     }
 }
 
-impl From<io::Error> for MusicExporterError {
-    fn from(error: io::Error) -> Self {
+impl From<std::io::Error> for MusicExporterError {
+    fn from(error: std::io::Error) -> Self {
         Self {
             message: error.to_string(),
             source: Some(Arc::new(error)),
@@ -79,8 +74,8 @@ impl From<std::num::ParseIntError> for MusicExporterError {
     }
 }
 
-impl From<ParseError> for MusicExporterError {
-    fn from(error: ParseError) -> Self {
+impl From<url::ParseError> for MusicExporterError {
+    fn from(error: url::ParseError) -> Self {
         Self {
             message: error.to_string(),
             source: Some(Arc::new(error)),
@@ -96,8 +91,18 @@ impl From<reqwest::Error> for MusicExporterError {
         }
     }
 }
+
 impl From<hyper::http::Error> for MusicExporterError {
     fn from(error: hyper::http::Error) -> Self {
+        Self {
+            message: error.to_string(),
+            source: Some(Arc::new(error)),
+        }
+    }
+}
+
+impl From<dotenv::Error> for MusicExporterError {
+    fn from(error: dotenv::Error) -> Self {
         Self {
             message: error.to_string(),
             source: Some(Arc::new(error)),
@@ -134,10 +139,10 @@ impl From<serde_json::Error> for MusicExporterError {
     }
 }
 
-impl From<Value> for MusicExporterError {
-    fn from(value: Value) -> Self {
+impl From<serde_json::Value> for MusicExporterError {
+    fn from(value: serde_json::Value) -> Self {
         match value.get("error") {
-            Some(Value::String(error_message)) => Self::new(error_message.clone()),
+            Some(serde_json::Value::String(error_message)) => Self::new(error_message.clone()),
             _ => Self::new(value.to_string()),
         }
     }

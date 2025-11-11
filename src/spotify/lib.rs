@@ -10,7 +10,7 @@ use crate::{
     errors::MusicExporterError,
     oauth::listen_for_code,
     utils::{input_env, to_base_64},
-    Music, Platform,
+    Music, MusicExporter, Platform,
 };
 
 /// Spotify platform
@@ -105,7 +105,9 @@ impl SpotifyPlatform {
 }
 
 impl Platform for SpotifyPlatform {
-    fn try_new() -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
+    fn try_new(
+        _music_exp: &MusicExporter,
+    ) -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
         Box::pin(async {
             let id_client = input_env("Please enter id_client", custom_env!("SPOTIFY_ID_CLIENT"))?;
             let id_client_secret = input_env(

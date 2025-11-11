@@ -26,7 +26,7 @@ pub use spotify::lib::SpotifyPlatform;
 pub use youtube::lib::YoutubePlatform;
 
 pub use utils::music_exporter_main;
-pub use utils::MusicExporterArgs;
+pub use utils::MusicExporter;
 pub use utils::Platform;
 pub use utils::PlatformType;
 
