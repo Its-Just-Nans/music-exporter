@@ -80,7 +80,7 @@ impl PlatformType {
     ) -> Result<Vec<Music>, MusicExporterError> {
         let mut items = vec![];
         for platform in platforms {
-            log::info!("Retreiving music of {}", platform);
+            log::info!("Retrieving music of {}", platform);
             items.extend(platform.get_list().await?);
         }
         Ok(items)
