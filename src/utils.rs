@@ -102,7 +102,7 @@ pub async fn music_exporter_main(
     music_file: PathBuf,
     env_path: Option<PathBuf>,
     platforms: &[PlatformType],
-) -> Result<(), MusicExporterError> {
+) -> Result<Vec<Music>, MusicExporterError> {
     let m = MusicExporter::new_from_vars(music_file.clone(), env_path, platforms);
     m.run_main().await
 }
@@ -136,22 +136,31 @@ impl MusicExporter {
         Ok(items)
     }
 
-    /// Run main
+    /// Load the env file
     /// # Errors
-    /// Fails if something happens
-    pub async fn run_main(&self) -> Result<(), MusicExporterError> {
+    /// Fails if the env failed to load
+    pub fn load_env(&self) -> Result<(), MusicExporterError> {
         match &self.env_file {
             Some(path) => {
                 dotenv::from_path(path)?;
             }
             None => {
-                dotenv::dotenv()?;
+                // dotenv::dotenv()?;
             }
-        }
+        };
+        Ok(())
+    }
+
+    /// Run main
+    /// # Errors
+    /// Fails if something happens
+    pub async fn run_main(&self) -> Result<Vec<Music>, MusicExporterError> {
+        self.load_env()
+            .map_err(|e| MusicExporterError::new_with_source("Failed to load env file", e))?;
         let musics = self.get_musics().await?;
         log::info!("Unique items: {}", musics.len());
-        self.write_to_file(musics)?;
-        Ok(())
+        self.write_to_file(&musics)?;
+        Ok(musics)
     }
 
     /// Get the list of music from the selected platforms
@@ -171,7 +180,7 @@ impl MusicExporter {
     /// Write to file
     /// # Errors
     /// Error if the file cannot be created
-    pub fn write_to_file(&self, data: Vec<Music>) -> Result<(), MusicExporterError> {
+    pub fn write_to_file(&self, data: &[Music]) -> Result<(), MusicExporterError> {
         let file = File::create(&self.music_file)?;
         let mut writer = BufWriter::new(file);
         let formatter = serde_json::ser::PrettyFormatter::with_indent(b"    ");

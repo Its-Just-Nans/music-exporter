@@ -42,6 +42,16 @@ impl MusicExporterError {
             source: None,
         }
     }
+
+    /// New error with source
+    pub fn new_with_source<S: AsRef<str>>(s: S, src: MusicExporterError) -> Self {
+        let ref_str = s.as_ref();
+        let message = ref_str.to_string();
+        Self {
+            message,
+            source: src.source,
+        }
+    }
 }
 
 impl From<&str> for MusicExporterError {

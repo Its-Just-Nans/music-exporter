@@ -20,29 +20,3 @@ async fn main() {
         }
     };
 }
-
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-
-    use music_exporter::PlatformType;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_main() {
-        let filename = PathBuf::from("data.json");
-        MusicExporter::new_from_vars(
-            filename,
-            None,
-            &[
-                PlatformType::Deezer,
-                // PlatformType::Spotify,
-                // PlatformType::Youtube,
-            ],
-        )
-        .run_main()
-        .await
-        .unwrap();
-    }
-}

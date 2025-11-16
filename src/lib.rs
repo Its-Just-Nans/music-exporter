@@ -1,4 +1,25 @@
-//! Music exporter library
+//! Music exporter
+//!
+//! # CLI Usage
+//!
+//! ```sh
+//! cargo install music-exporter
+//! music-exporter --music-file musics.json --platform deezer
+//! ```
+//!
+//! # Rust Usage
+//!
+//! ```rust
+//! use music_exporter::{Music, MusicExporter, MusicExporterError};
+//! use clap::Parser;
+//!
+//! async fn run_async() -> Result<Vec<Music>, MusicExporterError> {
+//!    let music_exp = MusicExporter::parse();
+//!    // music_exp.load_env()?;
+//!    music_exp.get_musics().await
+//! }
+//! ```
+//!
 
 #![deny(
     missing_docs,
@@ -25,6 +46,7 @@ pub use music::Music;
 pub use spotify::lib::SpotifyPlatform;
 pub use youtube::lib::YoutubePlatform;
 
+pub use errors::MusicExporterError;
 pub use utils::music_exporter_main;
 pub use utils::MusicExporter;
 pub use utils::Platform;
