@@ -23,6 +23,9 @@ pub struct YoutubePlatform {
     playlist_id: Option<String>,
 }
 
+/// Youtube redirect URI
+const YOUTUBE_REDIRECT_URI: &str = "http://localhost:8000";
+
 impl YoutubePlatform {
     /// Get the liked playlist id
     /// # Errors
@@ -76,7 +79,7 @@ impl YoutubePlatform {
                 ("code", code),
                 ("client_id", id_client),
                 ("client_secret", id_client_secret),
-                ("redirect_uri", "http://localhost:8000"),
+                ("redirect_uri", YOUTUBE_REDIRECT_URI),
                 ("grant_type", "authorization_code"),
             ])
             .send()
@@ -193,13 +196,14 @@ impl Platform for YoutubePlatform {
     ) -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
         let playlist_id = music_exp.youtube_playlist_id.clone();
         Box::pin(async {
-            let api_key = input_env("Please enter API KEY", custom_env!("YOUTUBE_API_KEY"))?;
-            let id_client = input_env("Please enter id_client", custom_env!("YOUTUBE_ID_CLIENT"))?;
+            let api_key = input_env("Please enter the youtube developper app API KEY", custom_env!("YOUTUBE_API_KEY"))?;
+            let id_client = input_env("Please enter the youtube developper app 'id_client'", custom_env!("YOUTUBE_ID_CLIENT"))?;
             let id_client_secret = input_env(
-                "Please enter id_client_secret",
+                "Please enter the youtube developper app 'id_client_secret'",
                 custom_env!("YOUTUBE_ID_CLIENT_SECRET"),
             )?;
-            let url_oauth = format!("https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&scope=https://www.googleapis.com/auth/youtube.readonly&response_type=code", id_client.clone(), "http://localhost:8000");
+            let scope = "https://www.googleapis.com/auth/youtube.readonly";
+            let url_oauth = format!("https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&scope={}&response_type=code", id_client.clone(), YOUTUBE_REDIRECT_URI, scope);
             // start the server in a thread
             let srv = listen_for_code(8000);
             println!(

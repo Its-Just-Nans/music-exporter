@@ -20,6 +20,11 @@ pub struct SpotifyPlatform {
     authorization: String,
 }
 
+/// Spotify redirect URI
+/// `localhost` is not allowed as redirect URI
+/// https://developer.spotify.com/documentation/web-api/concepts/redirect_uri
+const SPOTIFY_REDIRECT_URI: &str = "http://127.0.0.1:8000";
+
 impl SpotifyPlatform {
     /// Get the authorization token from the code
     /// # Errors
@@ -40,7 +45,7 @@ impl SpotifyPlatform {
             .header("Authorization", authorization_header)
             .form(&[
                 ("code", code),
-                ("redirect_uri", "http://localhost:8000"),
+                ("redirect_uri", SPOTIFY_REDIRECT_URI),
                 ("grant_type", "authorization_code"),
             ])
             .send()
@@ -109,9 +114,12 @@ impl Platform for SpotifyPlatform {
         _music_exp: &MusicExporter,
     ) -> Pin<Box<dyn Future<Output = Result<Self, MusicExporterError>> + Send>> {
         Box::pin(async {
-            let id_client = input_env("Please enter id_client", custom_env!("SPOTIFY_ID_CLIENT"))?;
+            let id_client = input_env(
+                "Please enter the spotify developper app 'id_client'",
+                custom_env!("SPOTIFY_ID_CLIENT"),
+            )?;
             let id_client_secret = input_env(
-                "Please enter id_client_secret",
+                "Please enter the spotify developper app 'id_client_secret'",
                 custom_env!("SPOTIFY_ID_CLIENT_SECRET"),
             )?;
             let url_oauth = url::Url::parse_with_params(
@@ -119,7 +127,7 @@ impl Platform for SpotifyPlatform {
                 &[
                     ("client_id", &id_client),
                     ("response_type", &"code".to_string()),
-                    ("redirect_uri", &"http://localhost:8000".to_string()),
+                    ("redirect_uri", &SPOTIFY_REDIRECT_URI.to_string()),
                     (
                         "scope",
                         &"playlist-read-private,user-library-read".to_string(),

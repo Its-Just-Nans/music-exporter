@@ -1,6 +1,6 @@
 //! Utility functions
 
-use clap::{Parser, ValueEnum};
+use clap::{ArgAction, Parser, ValueEnum};
 use serde::Serialize;
 use std::{
     fs::{self, File, OpenOptions},
@@ -86,6 +86,14 @@ pub struct MusicExporter {
     #[arg(long, value_name = "MUSIC_FILE", required = true)]
     pub music_file: PathBuf,
 
+    /// Remove duplicates
+    #[arg(long, action=ArgAction::SetFalse)]
+    pub remove_duplicates: bool,
+
+    /// Sort musics
+    #[arg(long, action=ArgAction::SetFalse)]
+    pub sort: bool,
+
     /// Target platforms (must provide at least one)
     #[arg(long = "platform", value_enum, required = true, num_args = 1..)]
     pub platforms: Vec<PlatformType>,
@@ -119,6 +127,8 @@ impl MusicExporter {
             env_file: env_path,
             platforms: platforms.to_vec(),
             youtube_playlist_id: None,
+            remove_duplicates: true,
+            sort: true,
         }
     }
 
@@ -131,8 +141,17 @@ impl MusicExporter {
         items.extend(musics_from_platforms);
         // write to file
         log::info!("Total items: {}", items.len());
-        let mut items = music::unique_music(items);
-        items.sort();
+        let mut items = if self.remove_duplicates {
+            music::unique_music(items)
+        } else {
+            items
+        };
+        let items = if self.sort {
+            items.sort();
+            items
+        } else {
+            items
+        };
         Ok(items)
     }
 
